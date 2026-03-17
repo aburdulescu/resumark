@@ -1,13 +1,17 @@
-// TODOs:
-// - implement line wrap, or error if line is too big?
-// - error if document is bigger than 1 page -> cv must be short
-// - error if md contains unexpected nodes
+// TODO: implement line wrap, or error if line is too big?
+// TODO: error if document is bigger than 1 page -> cv must be short
+// TODO: error if md contains unexpected nodes
 
 const std = @import("std");
 const c = @cImport({
     @cInclude("cmark.h");
     @cInclude("hpdf.h");
 });
+
+const usage =
+    \\Usage: resumark MARKDOWN_FILE PDF_FILE
+    \\
+;
 
 pub fn main() !void {
     var arena_instance = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -17,20 +21,21 @@ pub fn main() !void {
     const all_args = try std.process.argsAlloc(arena);
     const args = all_args[1..];
 
-    if (args.len == 0) {
-        std.debug.print("Usage: resumark MARKDOWN_FILE\n", .{});
+    if (args.len != 2) {
+        std.debug.print("{s}", .{usage});
         return;
     }
 
     const markdown_file = args[0];
+    const pdf_file = args[1];
 
     const MB = 1024 * 1024;
     const markdown = try std.fs.cwd().readFileAlloc(arena, markdown_file, 1 * MB);
 
-    try markdown_to_pdf(markdown);
+    try markdown_to_pdf(markdown, pdf_file);
 }
 
-fn markdown_to_pdf(markdown: []const u8) !void {
+fn markdown_to_pdf(markdown: []const u8, pdf_file: [*c]const u8) !void {
     const doc = c.HPDF_New(libharu_error_handler, null);
     if (doc == null) {
         return error.CannotCreatePDFObject;
@@ -76,12 +81,8 @@ fn markdown_to_pdf(markdown: []const u8) !void {
         const node_type = c.cmark_node_get_type(node);
         const node_type_string = c.cmark_node_get_type_string(node);
 
-
-
         switch (event) {
             c.CMARK_EVENT_ENTER => {
-                std.debug.print("-> {s}\n", .{node_type_string});
-
                 switch (node_type) {
                     c.CMARK_NODE_DOCUMENT => {
                         // ignore
@@ -137,8 +138,6 @@ fn markdown_to_pdf(markdown: []const u8) !void {
             },
 
             c.CMARK_EVENT_EXIT => {
-                std.debug.print("<- {s}\n", .{node_type_string});
-
                 switch (node_type) {
                     c.CMARK_NODE_STRONG, c.CMARK_NODE_EMPH => {
                         if (c.HPDF_Page_SetFontAndSize(page, font, font_size_text) != c.HPDF_OK) return error.FailedToReSetFontForSTRONG;
@@ -162,7 +161,7 @@ fn markdown_to_pdf(markdown: []const u8) !void {
         }
     }
 
-    if (c.HPDF_SaveToFile(doc, "out.pdf") != c.HPDF_OK) return error.FailedToSaveFile;
+    if (c.HPDF_SaveToFile(doc, pdf_file) != c.HPDF_OK) return error.FailedToSaveFile;
 
     _ = max_x; // TODO: use this for line wrap
 }
