@@ -11,12 +11,8 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    const optimize = b.standardOptimizeOption(.{});
-    const strip = b.option(bool, "strip", "Strip the binary") orelse switch (optimize) {
-        .Debug, .ReleaseSafe => false,
-        else => true,
-    };
-
+    const optimize: std.builtin.OptimizeMode = .ReleaseSafe;
+    const strip = b.option(bool, "strip", "Strip the binary") orelse false;
     const targets = [_]std.Target.Query{
         .{ .os_tag = .linux, .cpu_arch = .aarch64 },
         .{ .os_tag = .linux, .cpu_arch = .x86_64 },

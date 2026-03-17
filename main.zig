@@ -1,4 +1,4 @@
-// TODO: implement line wrap, or error if line is too big?
+// TODO: error if line needs wrapping
 // TODO: error if document is bigger than 1 page -> cv must be short
 // TODO: error if md contains unexpected nodes
 
@@ -10,6 +10,7 @@ const c = @cImport({
 
 const usage =
     \\Usage: resumark MARKDOWN_FILE PDF_FILE
+    \\Version: 0.1
     \\
 ;
 
@@ -83,8 +84,10 @@ fn markdown_to_pdf(markdown: []const u8, pdf_file: [*c]const u8) !void {
 
         switch (event) {
             c.CMARK_EVENT_ENTER => {
+                // std.debug.print("info: -> {s}\n", .{node_type_string});
+
                 switch (node_type) {
-                    c.CMARK_NODE_DOCUMENT => {
+                    c.CMARK_NODE_DOCUMENT, c.CMARK_NODE_SOFTBREAK => {
                         // ignore
                     },
 
@@ -138,6 +141,8 @@ fn markdown_to_pdf(markdown: []const u8, pdf_file: [*c]const u8) !void {
             },
 
             c.CMARK_EVENT_EXIT => {
+                // std.debug.print("info: <- {s}\n", .{node_type_string});
+
                 switch (node_type) {
                     c.CMARK_NODE_STRONG, c.CMARK_NODE_EMPH => {
                         if (c.HPDF_Page_SetFontAndSize(page, font, font_size_text) != c.HPDF_OK) return error.FailedToReSetFontForSTRONG;
@@ -172,5 +177,5 @@ fn libharu_error_handler(
     user_data: ?*anyopaque,
 ) callconv(.c) void {
     _ = user_data;
-    std.debug.print("libharu error: error_no 0x{x:0>4}, detail_no 0x{x:0>4}\n", .{ error_no, detail_no });
+    std.debug.print("error: libharu error_no 0x{x:0>4}, detail_no 0x{x:0>4}\n", .{ error_no, detail_no });
 }
