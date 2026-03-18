@@ -13,13 +13,19 @@ pub fn build(b: *std.Build) void {
 
     const optimize: std.builtin.OptimizeMode = .ReleaseSafe;
     const strip = b.option(bool, "strip", "Strip the binary") orelse false;
-    const targets = [_]std.Target.Query{
-        .{ .os_tag = .linux, .cpu_arch = .aarch64 },
-        .{ .os_tag = .linux, .cpu_arch = .x86_64 },
-        .{ .os_tag = .macos, .cpu_arch = .aarch64 },
-        .{ .os_tag = .macos, .cpu_arch = .x86_64 },
-        .{ .os_tag = .windows, .cpu_arch = .x86_64 },
-    };
+    const dev_mode = b.option(bool, "dev", "Build only for native target") orelse false;
+    const std_target = b.standardTargetOptions(.{});
+
+    const targets = if (dev_mode)
+        &[_]std.Target.Query{std_target.query}
+    else
+        &[_]std.Target.Query{
+            .{ .os_tag = .linux, .cpu_arch = .aarch64 },
+            .{ .os_tag = .linux, .cpu_arch = .x86_64 },
+            .{ .os_tag = .macos, .cpu_arch = .aarch64 },
+            .{ .os_tag = .macos, .cpu_arch = .x86_64 },
+            .{ .os_tag = .windows, .cpu_arch = .x86_64 },
+        };
 
     for (targets) |query| {
         const target = b.resolveTargetQuery(query);
